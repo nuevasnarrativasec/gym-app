@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MATTRICK GYM — Gestión Integral</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<style>
+  :root{
+    --bg:#0f1420; --panel:#171e2e; --panel2:#1e2740; --line:#2a3450;
+    --txt:#e7ecf5; --muted:#8b97b5; --accent:#4f7cff; --accent2:#22c55e;
+    --danger:#ef4444; --warn:#f59e0b; --chip:#233052;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt)}
+  .app{display:flex;min-height:100vh}
+  .side{width:230px;background:#000;border-right:1px solid var(--line);padding:20px 14px;position:sticky;top:0;height:100vh}
+  .side .logo{display:block;width:170px;margin:4px auto 6px}
+  .brand{font-weight:800;font-size:20px;margin:0 8px 24px;display:flex;align-items:center;gap:8px}
+  .brand span{color:var(--accent)}
+  .nav button{width:100%;text-align:left;background:none;border:none;color:var(--muted);padding:11px 12px;border-radius:9px;cursor:pointer;font-size:14px;display:flex;align-items:center;gap:10px;margin-bottom:2px}
+  .nav button:hover{background:var(--panel2);color:var(--txt)}
+  .nav button.on{background:var(--accent);color:#fff;font-weight:600}
+  .main{flex:1;padding:26px 30px;max-width:1200px}
+  h1{font-size:22px;margin:0 0 4px}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:22px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:24px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+  .card .k{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+  .card .v{font-size:26px;font-weight:800;margin-top:6px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:20px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:end}
+  label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px}
+  input,select{background:var(--panel2);border:1px solid var(--line);color:var(--txt);padding:9px 11px;border-radius:8px;font-size:14px;outline:none}
+  input:focus,select:focus{border-color:var(--accent)}
+  .btn{background:var(--accent);color:#fff;border:none;padding:9px 16px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600}
+  .btn:hover{filter:brightness(1.1)}
+  .btn.g{background:var(--accent2)}
+  .btn.d{background:var(--danger)}
+  .btn.ghost{background:var(--chip);color:var(--txt)}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.4px}
+  tr:hover td{background:var(--panel2)}
+  .tag{display:inline-block;padding:3px 9px;border-radius:20px;font-size:12px;font-weight:600}
+  .t-ok{background:rgba(34,197,94,.15);color:#4ade80}
+  .t-warn{background:rgba(245,158,11,.15);color:#fbbf24}
+  .t-bad{background:rgba(239,68,68,.15);color:#f87171}
+  .sec-title{font-size:15px;font-weight:700;margin:0 0 14px}
+  .empty{color:var(--muted);text-align:center;padding:30px;font-size:14px}
+  .flex-between{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+  .searchbar{margin-bottom:14px}
+  .link{color:var(--accent);cursor:pointer;background:none;border:none;font-size:13px;padding:0}
+  .link.d{color:var(--danger)}
+  .checkmsg{padding:12px 14px;border-radius:9px;margin-top:12px;font-weight:600}
+  .checkmsg.ok{background:rgba(34,197,94,.15);color:#4ade80}
+  .checkmsg.bad{background:rgba(239,68,68,.15);color:#f87171}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect} = React;
+const LS='mattrick_v2';
+const uid=()=>Math.random().toString(36).slice(2,9);
+const today=()=>new Date().toISOString().slice(0,10);
+const addDays=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x.toISOString().slice(0,10)};
+const fmt=n=>'S/ '+Number(n||0).toLocaleString('es-PE',{minimumFractionDigits:0});
+const fd=iso=>{if(!iso)return'—';const p=iso.slice(0,10).split('-');return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:iso};
+const DAYS=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+
+// Planes reales de MATTRICK GYM (soles). antes = precio anterior en promoción.
+const seedPlans=[
+  {id:'d1',cat:'Diario',nombre:'Diario · 1 mes',precio:155,antes:170,dias:30,sesiones:null},
+  {id:'d3',cat:'Diario',nombre:'Diario · 3 meses',precio:369,antes:410,dias:90,sesiones:null},
+  {id:'d6',cat:'Diario',nombre:'Diario · 6 meses',precio:639,antes:720,dias:180,sesiones:null},
+  {id:'i1',cat:'Inter-diario',nombre:'Inter-diario · 1 mes',precio:125,antes:140,dias:30,sesiones:12},
+  {id:'i3',cat:'Inter-diario',nombre:'Inter-diario · 3 meses',precio:299,antes:330,dias:90,sesiones:36},
+  {id:'i6',cat:'Inter-diario',nombre:'Inter-diario · 6 meses',precio:530,antes:580,dias:180,sesiones:72},
+];
+// Servicios adicionales de nutrición (pago único).
+const seedServicios=[
+  {id:'n1',nombre:'Nutrición',precio:110,desc:'Medidas antropométricas · Evaluación · Plan nutricional'},
+  {id:'n2',nombre:'Nutrición PRO',precio:220,desc:'Medidas antropométricas · Evaluación · Plan nutricional · Asesoría 24/7'},
+];
+function seedData(){
+  const t=today();
+  const socios=[
+    {id:uid(),nombre:'Ana Gómez',doc:'30111222',tel:'999-111-222',email:'ana@mail.com',planId:'d1',alta:t,vence:addDays(t,20)},
+    {id:uid(),nombre:'Bruno Díaz',doc:'28999888',tel:'999-222-333',email:'bruno@mail.com',planId:'i3',alta:addDays(t,-80),vence:addDays(t,10)},
+    {id:uid(),nombre:'Carla Ruiz',doc:'33444555',tel:'999-333-444',email:'carla@mail.com',planId:'d1',alta:addDays(t,-40),vence:addDays(t,-10)},
+  ];
+  const pagos=socios.map(s=>({id:uid(),socioId:s.id,fecha:s.alta,monto:seedPlans.find(p=>p.id===s.planId).precio,concepto:seedPlans.find(p=>p.id===s.planId).nombre,tipo:'Membresía',metodo:'Efectivo'}));
+  const clases=[
+    {id:uid(),nombre:'Funcional',instructor:'Erick Lazo',dia:'Lunes',hora:'18:00',cupo:15,inscritos:[socios[0].id]},
+    {id:uid(),nombre:'HIIT',instructor:'Erick Lazo',dia:'Miércoles',hora:'19:00',cupo:12,inscritos:[]},
+    {id:uid(),nombre:'Fuerza',instructor:'Erick Lazo',dia:'Viernes',hora:'09:00',cupo:10,inscritos:[socios[0].id,socios[1].id]},
+  ];
+  return {plans:seedPlans,servicios:seedServicios,socios,pagos,asistencias:[],clases};
+}
+function load(){try{const r=localStorage.getItem(LS);if(r)return JSON.parse(r)}catch(e){}return seedData()}
+
+// Duración (días) de un plan a partir del nombre del concepto pagado.
+function planDias(plans,concepto){const p=(plans||[]).find(x=>x.nombre===concepto);return p?p.dias:30}
+// Cobertura real de un socio: apila los pagos de membresía. Cada plan pagado
+// empieza cuando termina el anterior (o en la fecha de pago si ya había vencido).
+function coberturaDe(s,db){
+  const pm=(db.pagos||[]).filter(p=>p.socioId===s.id&&p.tipo!=='Servicio'&&(p.tipo==='Membresía'||(db.plans||[]).some(pl=>pl.nombre===p.concepto)))
+    .slice().sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||''));
+  const segs=[];let prev=null;
+  pm.forEach(p=>{
+    const dias=planDias(db.plans,p.concepto);
+    const desde=(prev&&prev>p.fecha)?prev:p.fecha;
+    const hasta=addDays(desde,dias);
+    segs.push({concepto:p.concepto,desde,hasta,pago:p.fecha});
+    prev=hasta;
+  });
+  if(segs.length===0)segs.push({concepto:(db.plans.find(p=>p.id===s.planId)||{}).nombre||'—',desde:s.alta,hasta:s.vence,pago:s.alta});
+  return segs;
+}
+function venceEfectivo(s,db){const g=coberturaDe(s,db);return g[g.length-1].hasta}
+// Índice del segmento vigente hoy (o el último pasado / primero futuro).
+function segActualIdx(segs){
+  const t=today();
+  const i=segs.findIndex(g=>g.desde<=t&&t<g.hasta);
+  if(i>=0)return i;
+  if(segs.every(g=>g.hasta<=t))return segs.length-1;
+  return 0;
+}
+function estadoSocio(s,db){
+  const v=venceEfectivo(s,db);const t=today();
+  if(v<t)return{k:'vencido',cls:'t-bad',label:'Vencido'};
+  if(v<=addDays(t,7))return{k:'porvencer',cls:'t-warn',label:'Por vencer'};
+  return{k:'activo',cls:'t-ok',label:'Activo'};
+}
+
+function App(){
+  const [db,setDb]=useState(load);
+  const [tab,setTab]=useState('dash');
+  const [kiosk,setKiosk]=useState(false);
+  useEffect(()=>{localStorage.setItem(LS,JSON.stringify(db))},[db]);
+  const up=patch=>setDb(d=>({...d,...(typeof patch==='function'?patch(d):patch)}));
+
+  if(kiosk)return <Kiosk db={db} up={up} salir={()=>setKiosk(false)}/>;
+
+  const nav=[
+    {k:'dash',t:'Panel',i:'📊'},
+    {k:'socios',t:'Socios',i:'👥'},
+    {k:'pagos',t:'Pagos',i:'💳'},
+    {k:'checkin',t:'Check-in',i:'✅'},
+    {k:'clases',t:'Clases',i:'🗓️'},
+  ];
+  return (
+    <div className="app">
+      <aside className="side">
+        <img className="logo" src="assets/mattrick-logo.jpeg" alt="Mattrick Fitness Club"/>
+        <div style={{color:'var(--muted)',fontSize:11,textAlign:'center',margin:'0 8px 22px'}}>Coach Erick Lazo · Ventanilla</div>
+        <nav className="nav">
+          {nav.map(n=>(
+            <button key={n.k} className={tab===n.k?'on':''} onClick={()=>setTab(n.k)}>
+              <span>{n.i}</span>{n.t}
+            </button>
+          ))}
+        </nav>
+        <button className="btn" style={{width:'100%',marginTop:18}} onClick={()=>setKiosk(true)}>🖥️ Abrir modo kiosco</button>
+      </aside>
+      <main className="main">
+        {tab==='dash'&&<Dash db={db} go={setTab}/>}
+        {tab==='socios'&&<Socios db={db} up={up}/>}
+        {tab==='pagos'&&<Pagos db={db} up={up}/>}
+        {tab==='checkin'&&<Checkin db={db} up={up}/>}
+        {tab==='clases'&&<Clases db={db} up={up}/>}
+      </main>
+    </div>
+  );
+}
+
+function Kiosk({db,up,salir}){
+  const [val,setVal]=useState('');
+  const [res,setRes]=useState(null);
+  const [reloj,setReloj]=useState(new Date());
+  useEffect(()=>{const t=setInterval(()=>setReloj(new Date()),1000);return()=>clearInterval(t)},[]);
+  const hora=d=>d.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
+  const limpiar=()=>{setVal('');setRes(null)};
+  const submit=()=>{
+    if(val.length<3){setRes({t:'warn',msg:'Ingresa un DNI válido'});return}
+    const s=db.socios.find(x=>x.doc===val);
+    if(!s){setRes({t:'bad',titulo:'Socio no encontrado',msg:'Acércate a recepción.'});setTimeout(limpiar,3500);return}
+    const e=estadoSocio(s,db);
+    if(e.k==='vencido'){setRes({t:'bad',titulo:'Acceso denegado',msg:s.nombre+' — membresía vencida el '+fd(venceEfectivo(s,db))+'. Renueva en recepción.'});setTimeout(limpiar,3500);return}
+    const segs=coberturaDe(s,db);const actual=segs[segActualIdx(segs)];
+    up(d=>({asistencias:[...d.asistencias,{id:uid(),socioId:s.id,fecha:new Date().toISOString()}]}));
+    setRes({t:'ok',titulo:'¡Bienvenido, '+s.nombre+'!',msg:actual.concepto+' · ingreso registrado a las '+hora(new Date())});
+    setTimeout(limpiar,3500);
+  };
+  const tecla=k=>{if(res)limpiar();if(val.length<8)setVal(val+k)};
+  const backspace=()=>{if(res){limpiar();return}setVal(val.slice(0,-1))};
+  useEffect(()=>{
+    const h=e=>{if(e.key>='0'&&e.key<='9')tecla(e.key);else if(e.key==='Backspace')backspace();else if(e.key==='Enter')submit();else if(e.key==='Escape')salir()};
+    window.addEventListener('keydown',h);return()=>window.removeEventListener('keydown',h);
+  });
+  const asistHoy=db.asistencias.filter(a=>a.fecha.slice(0,10)===today()).length;
+  const box=res&&{
+    ok:{bg:'rgba(34,197,94,.15)',c:'#4ade80'},
+    bad:{bg:'rgba(239,68,68,.15)',c:'#f87171'},
+    warn:{bg:'rgba(245,158,11,.15)',c:'#fbbf24'},
+  }[res.t];
+  return(
+    <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:20}}>
+      <button className="btn ghost" style={{position:'absolute',top:16,right:16}} onClick={salir}>✕ Salir del kiosco</button>
+      <div style={{width:440,background:'#000',border:'1px solid var(--line)',borderRadius:20,overflow:'hidden'}}>
+        <div style={{padding:'22px 28px 12px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <img src="assets/mattrick-logo.jpeg" alt="Mattrick Fitness Club" style={{width:120,display:'block'}}/>
+          <div style={{color:'var(--muted)',fontSize:13}}>{hora(reloj)}</div>
+        </div>
+        <div style={{padding:'6px 28px 20px',minHeight:150}}>
+          {!res&&<div style={{color:'var(--muted)',fontSize:15,marginBottom:12}}>Ingresa tu DNI para registrar tu asistencia</div>}
+          {!res&&<div style={{height:56,background:'var(--panel2)',border:'1px solid var(--line)',borderRadius:12,display:'flex',alignItems:'center',justifyContent:'center',fontSize:30,letterSpacing:10,fontWeight:700}}>{val||'–'}</div>}
+          {res&&<div style={{background:box.bg,color:box.c,borderRadius:12,padding:18}}>
+            {res.titulo&&<div style={{fontWeight:700,fontSize:19}}>{res.titulo}</div>}
+            <div style={{marginTop:res.titulo?6:0,fontSize:14}}>{res.msg}</div>
+          </div>}
+        </div>
+        <div style={{padding:'0 28px 28px',display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12}}>
+          {['1','2','3','4','5','6','7','8','9'].map(k=>(
+            <button key={k} onClick={()=>tecla(k)} style={{height:60,fontSize:24,fontWeight:700,borderRadius:14,border:'1px solid var(--line)',background:'var(--panel2)',color:'var(--txt)',cursor:'pointer'}}>{k}</button>
+          ))}
+          <button onClick={backspace} style={{height:60,fontSize:22,borderRadius:14,border:'1px solid var(--line)',background:'var(--chip)',color:'var(--txt)',cursor:'pointer'}}>⌫</button>
+          <button onClick={()=>tecla('0')} style={{height:60,fontSize:24,fontWeight:700,borderRadius:14,border:'1px solid var(--line)',background:'var(--panel2)',color:'var(--txt)',cursor:'pointer'}}>0</button>
+          <button onClick={submit} style={{height:60,fontSize:24,fontWeight:700,borderRadius:14,border:'none',background:'var(--accent2)',color:'#05140a',cursor:'pointer'}}>✓</button>
+        </div>
+      </div>
+      <div style={{color:'var(--muted)',fontSize:13,marginTop:18}}>Ingresos registrados hoy: {asistHoy}</div>
+    </div>
+  );
+}
+
+function Dash({db,go}){
+  const t=today();
+  const activos=db.socios.filter(s=>venceEfectivo(s,db)>=t).length;
+  const vencidos=db.socios.filter(s=>venceEfectivo(s,db)<t).length;
+  const ingresoMes=db.pagos.filter(p=>p.fecha.slice(0,7)===t.slice(0,7)).reduce((a,p)=>a+p.monto,0);
+  const asistHoy=db.asistencias.filter(a=>a.fecha.slice(0,10)===t).length;
+  const porVencer=db.socios.filter(s=>estadoSocio(s,db).k==='porvencer');
+  return(
+    <div>
+      <h1>Panel general</h1>
+      <div className="sub">Resumen del gimnasio — {new Date().toLocaleDateString('es-PE',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div>
+      <div className="cards">
+        <div className="card"><div className="k">Socios totales</div><div className="v">{db.socios.length}</div></div>
+        <div className="card"><div className="k">Activos</div><div className="v" style={{color:'#4ade80'}}>{activos}</div></div>
+        <div className="card"><div className="k">Vencidos</div><div className="v" style={{color:'#f87171'}}>{vencidos}</div></div>
+        <div className="card"><div className="k">Ingresos del mes</div><div className="v">{fmt(ingresoMes)}</div></div>
+        <div className="card"><div className="k">Check-ins hoy</div><div className="v">{asistHoy}</div></div>
+      </div>
+      <div className="panel">
+        <div className="flex-between">
+          <div className="sec-title">Membresías por vencer (7 días)</div>
+          <button className="link" onClick={()=>go('socios')}>Ver socios →</button>
+        </div>
+        {porVencer.length===0?<div className="empty">Nada por vencer esta semana 🎉</div>:
+        <table><thead><tr><th>Socio</th><th>Plan</th><th>Vence</th></tr></thead><tbody>
+          {porVencer.map(s=><tr key={s.id}><td>{s.nombre}</td><td>{db.plans.find(p=>p.id===s.planId)?.nombre}</td><td>{fd(venceEfectivo(s,db))}</td></tr>)}
+        </tbody></table>}
+      </div>
+      <div className="panel">
+        <div className="sec-title">Planes vigentes</div>
+        <table><thead><tr><th>Plan</th><th>Sesiones</th><th>Antes</th><th>Precio</th></tr></thead><tbody>
+          {db.plans.map(p=>(
+            <tr key={p.id}>
+              <td>{p.nombre}</td>
+              <td>{p.sesiones?p.sesiones+' sesiones':'Libre'}</td>
+              <td style={{color:'var(--muted)',textDecoration:'line-through'}}>{p.antes?fmt(p.antes):'—'}</td>
+              <td style={{fontWeight:700}}>{fmt(p.precio)}</td>
+            </tr>
+          ))}
+          {(db.servicios||[]).map(s=>(
+            <tr key={s.id}><td>{s.nombre}<div style={{color:'var(--muted)',fontSize:12}}>{s.desc}</div></td><td>Servicio</td><td>—</td><td style={{fontWeight:700}}>{fmt(s.precio)}</td></tr>
+          ))}
+        </tbody></table>
+      </div>
+      <div className="panel">
+        <div className="sec-title">Horarios de atención</div>
+        <table><tbody>
+          <tr><td style={{fontWeight:600}}>Lunes a viernes</td><td>6:00 AM – 1:00 PM · 5:00 PM – 10:30 PM</td></tr>
+          <tr><td style={{fontWeight:600}}>Sábados</td><td>6:30 AM – 1:00 PM · 5:00 PM – 8:00 PM</td></tr>
+          <tr><td style={{fontWeight:600}}>Asesorías (L–V)</td><td>6:30 AM – 12:00 PM · 5:00 PM – 10:00 PM</td></tr>
+        </tbody></table>
+      </div>
+    </div>
+  );
+}
+
+function Socios({db,up}){
+  const servicios=db.servicios||[];
+  const empty={nombre:'',doc:'',tel:'',email:'',planId:db.plans[0].id,servId:''};
+  const [f,setF]=useState(empty);
+  const [edit,setEdit]=useState(null);
+  const [q,setQ]=useState('');
+  const set=(k,v)=>setF({...f,[k]:v});
+  const guardar=()=>{
+    if(!f.nombre.trim())return alert('Nombre requerido');
+    const {servId,...datos}=f;
+    const plan=db.plans.find(p=>p.id===f.planId);
+    if(edit){
+      up(d=>({socios:d.socios.map(s=>s.id===edit?{...s,...datos}:s)}));
+      setEdit(null);
+    }else{
+      const t=today();
+      const socio={id:uid(),...datos,alta:t,vence:addDays(t,plan.dias)};
+      const ts=new Date().toISOString();
+      const pagos=[{id:uid(),socioId:socio.id,fecha:t,ts,monto:plan.precio,concepto:plan.nombre,tipo:'Membresía',metodo:'Efectivo'}];
+      const serv=servicios.find(x=>x.id===servId);
+      if(serv)pagos.push({id:uid(),socioId:socio.id,fecha:t,ts,monto:serv.precio,concepto:serv.nombre,tipo:'Servicio',metodo:'Efectivo'});
+      up(d=>({socios:[...d.socios,socio],pagos:[...d.pagos,...pagos]}));
+    }
+    setF(empty);
+  };
+  const editar=s=>{setEdit(s.id);setF({nombre:s.nombre,doc:s.doc,tel:s.tel,email:s.email,planId:s.planId,servId:''})};
+  const borrar=id=>{if(confirm('¿Eliminar socio?'))up(d=>({socios:d.socios.filter(s=>s.id!==id)}))};
+  const [renov,setRenov]=useState(null);
+  const confirmarRenov=()=>{
+    const s=renov.socio;const plan=db.plans.find(p=>p.id===renov.planId);const t=today();
+    const finActual=venceEfectivo(s,db);const inicio=finActual>t?finActual:t;const nuevoFin=addDays(inicio,plan.dias);
+    up(d=>({socios:d.socios.map(x=>x.id===s.id?{...x,vence:nuevoFin}:x),
+      pagos:[...d.pagos,{id:uid(),socioId:s.id,fecha:t,ts:new Date().toISOString(),monto:plan.precio,concepto:plan.nombre,tipo:'Membresía',metodo:renov.metodo}]}));
+    setRenov(null);
+  };
+  const list=db.socios.filter(s=>s.nombre.toLowerCase().includes(q.toLowerCase())||s.doc.includes(q));
+  return(
+    <div>
+      <h1>Socios y membresías</h1>
+      <div className="sub">Alta, edición, renovación y control de vencimientos.</div>
+      <div className="panel">
+        <div className="sec-title">{edit?'Editar socio':'Nuevo socio'}</div>
+        <div className="row" style={{marginBottom:14}}>
+          <div><label>Nombre</label><input value={f.nombre} onChange={e=>set('nombre',e.target.value)} placeholder="Nombre y apellido"/></div>
+          <div><label>Documento</label><input value={f.doc} onChange={e=>set('doc',e.target.value)} placeholder="DNI"/></div>
+          <div><label>Teléfono</label><input value={f.tel} onChange={e=>set('tel',e.target.value)}/></div>
+          <div><label>Email</label><input value={f.email} onChange={e=>set('email',e.target.value)}/></div>
+        </div>
+        <div className="row">
+          <div><label>Plan</label><select value={f.planId} onChange={e=>set('planId',e.target.value)} style={{minWidth:210}}>
+            {db.plans.map(p=><option key={p.id} value={p.id}>{p.nombre} — {fmt(p.precio)}</option>)}
+          </select></div>
+          {!edit&&<div><label>Nutrición (opcional)</label><select value={f.servId} onChange={e=>set('servId',e.target.value)} style={{minWidth:190}}>
+            <option value="">— Ninguno —</option>
+            {servicios.map(s=><option key={s.id} value={s.id}>{s.nombre} — {fmt(s.precio)}</option>)}
+          </select></div>}
+          <button className="btn g" onClick={guardar}>{edit?'Guardar':'+ Alta'}</button>
+          {edit&&<button className="btn ghost" onClick={()=>{setEdit(null);setF(empty)}}>Cancelar</button>}
+        </div>
+      </div>
+      <div className="panel">
+        <input className="searchbar" style={{width:260}} placeholder="Buscar por nombre o documento..." value={q} onChange={e=>setQ(e.target.value)}/>
+        {list.length===0?<div className="empty">Sin socios.</div>:
+        <table><thead><tr><th>Socio</th><th>Doc</th><th>Plan</th><th>Nutrición</th><th>Vence</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
+          {list.map(s=>{const e=estadoSocio(s,db);
+            const nutri=db.pagos.filter(p=>p.socioId===s.id&&p.tipo==='Servicio').sort((a,b)=>b.fecha.localeCompare(a.fecha))[0];
+            const segs=coberturaDe(s,db);const idx=segActualIdx(segs);const actual=segs[idx];const cola=segs.slice(idx+1);
+            return(
+            <tr key={s.id}>
+              <td>{s.nombre}<div style={{color:'var(--muted)',fontSize:12}}>{s.tel}</div></td>
+              <td>{s.doc}</td>
+              <td>{actual.concepto}</td>
+              <td>{nutri?<span className="tag t-ok" title={'Último: '+fd(nutri.fecha)}>{nutri.concepto}</span>:<span style={{color:'var(--muted)'}}>—</span>}</td>
+              <td>
+                {fd(actual.hasta)}
+                {cola.length>0&&<div style={{color:'#7aa2ff',fontSize:11,marginTop:3}} title={cola.map(g=>g.concepto+': '+fd(g.desde)+' → '+fd(g.hasta)).join('\n')}>
+                  <i style={{fontStyle:'normal'}}>▸ luego {cola[0].concepto} desde {fd(cola[0].desde)}</i>
+                  <div>+{cola.length} pagado(s) · cubre hasta {fd(segs[segs.length-1].hasta)}</div>
+                </div>}
+              </td>
+              <td><span className={'tag '+e.cls}>{e.label}</span></td>
+              <td>
+                <button className="link" onClick={()=>setRenov({socio:s,planId:s.planId,metodo:'Efectivo'})}>Renovar</button>{' · '}
+                <button className="link" onClick={()=>editar(s)}>Editar</button>{' · '}
+                <button className="link d" onClick={()=>borrar(s.id)}>Eliminar</button>
+              </td>
+            </tr>);})}
+        </tbody></table>}
+      </div>
+      {renov&&(()=>{const plan=db.plans.find(p=>p.id===renov.planId);
+        const finActual=venceEfectivo(renov.socio,db);
+        const inicio=finActual>today()?finActual:today();
+        const nuevoFin=addDays(inicio,plan.dias);
+        const encola=finActual>today();
+        return(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.55)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:50}} onClick={()=>setRenov(null)}>
+          <div className="panel" style={{width:420,margin:0}} onClick={e=>e.stopPropagation()}>
+            <div className="sec-title">Renovar membresía — {renov.socio.nombre}</div>
+            <div style={{color:'var(--muted)',fontSize:13,marginBottom:14}}>Cobertura actual hasta: {fd(finActual)}</div>
+            <div style={{marginBottom:12}}>
+              <label>Plan a renovar</label>
+              <select value={renov.planId} onChange={e=>setRenov({...renov,planId:e.target.value})} style={{width:'100%'}}>
+                {db.plans.map(p=><option key={p.id} value={p.id}>{p.nombre} — {fmt(p.precio)}</option>)}
+              </select>
+            </div>
+            <div style={{marginBottom:12}}>
+              <label>Método de pago</label>
+              <select value={renov.metodo} onChange={e=>setRenov({...renov,metodo:e.target.value})} style={{width:'100%'}}>
+                <option>Efectivo</option><option>Tarjeta</option><option>Transferencia</option><option>Yape/Plin</option>
+              </select>
+            </div>
+            <div style={{background:'var(--panel2)',borderRadius:8,padding:'10px 12px',fontSize:14,marginBottom:16}}>
+              Cobro {fmt(plan.precio)}<br/>
+              {encola?<span>Se encola: inicia {fd(inicio)} · vence {fd(nuevoFin)}</span>:<span>Inicia hoy · vence {fd(nuevoFin)}</span>}
+            </div>
+            <div className="row">
+              <button className="btn g" onClick={confirmarRenov}>Confirmar renovación</button>
+              <button className="btn ghost" onClick={()=>setRenov(null)}>Cancelar</button>
+            </div>
+          </div>
+        </div>
+      )})()}
+    </div>
+  );
+}
+
+function Pagos({db,up}){
+  const servicios=db.servicios||[];
+  const [socioId,setSocioId]=useState(db.socios[0]?.id||'');
+  const [planId,setPlanId]=useState('');
+  const [servId,setServId]=useState('');
+  const [metodo,setMetodo]=useState('Efectivo');
+  const [filtro,setFiltro]=useState('');
+  const t=today();
+  const planSel=db.plans.find(p=>p.id===planId);
+  const servSel=servicios.find(s=>s.id===servId);
+  const total=(planSel?planSel.precio:0)+(servSel?servSel.precio:0);
+  const registrar=()=>{
+    if(!socioId)return alert('Elegí un socio');
+    if(!planSel&&!servSel)return alert('Elegí una membresía o un servicio');
+    const ts=new Date().toISOString();
+    const nuevos=[];
+    if(planSel)nuevos.push({id:uid(),socioId,fecha:t,ts,monto:planSel.precio,concepto:planSel.nombre,tipo:'Membresía',metodo});
+    if(servSel)nuevos.push({id:uid(),socioId,fecha:t,ts,monto:servSel.precio,concepto:servSel.nombre,tipo:'Servicio',metodo});
+    up(d=>({pagos:[...d.pagos,...nuevos]}));
+    setPlanId('');setServId('');
+  };
+  const ingresoMes=db.pagos.filter(p=>p.fecha.slice(0,7)===t.slice(0,7)).reduce((a,p)=>a+p.monto,0);
+  const ingresoTotal=db.pagos.reduce((a,p)=>a+p.monto,0);
+  const nombre=id=>db.socios.find(s=>s.id===id)?.nombre||'—';
+  const horaDe=p=>p.ts?new Date(p.ts).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'}):'—';
+  const hist=[...db.pagos].filter(p=>!filtro||p.socioId===filtro).sort((a,b)=>(b.ts||b.fecha).localeCompare(a.ts||a.fecha));
+  return(
+    <div>
+      <h1>Pagos y cobros</h1>
+      <div className="sub">Registro de cobros de membresías y servicios de nutrición.</div>
+      <div className="cards">
+        <div className="card"><div className="k">Ingresos del mes</div><div className="v">{fmt(ingresoMes)}</div></div>
+        <div className="card"><div className="k">Ingresos totales</div><div className="v">{fmt(ingresoTotal)}</div></div>
+        <div className="card"><div className="k">Pagos registrados</div><div className="v">{db.pagos.length}</div></div>
+      </div>
+      <div className="panel">
+        <div className="sec-title">Registrar pago</div>
+        <div className="row">
+          <div><label>Socio</label><select value={socioId} onChange={e=>setSocioId(e.target.value)} style={{minWidth:170}}>
+            {db.socios.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}
+          </select></div>
+          <div><label>Membresía</label><select value={planId} onChange={e=>setPlanId(e.target.value)} style={{minWidth:210}}>
+            <option value="">— Ninguna —</option>
+            {db.plans.map(p=><option key={p.id} value={p.id}>{p.nombre} — {fmt(p.precio)}</option>)}
+          </select></div>
+          <div><label>Servicio de nutrición</label><select value={servId} onChange={e=>setServId(e.target.value)} style={{minWidth:180}}>
+            <option value="">— Ninguno —</option>
+            {servicios.map(s=><option key={s.id} value={s.id}>{s.nombre} — {fmt(s.precio)}</option>)}
+          </select></div>
+          <div><label>Método</label><select value={metodo} onChange={e=>setMetodo(e.target.value)}>
+            <option>Efectivo</option><option>Tarjeta</option><option>Transferencia</option><option>Yape/Plin</option>
+          </select></div>
+          <div><label>Total</label><input value={fmt(total)} readOnly style={{width:110,fontWeight:700}}/></div>
+          <button className="btn g" onClick={registrar}>+ Registrar</button>
+        </div>
+      </div>
+      <div className="panel">
+        <div className="flex-between">
+          <div className="sec-title" style={{margin:0}}>Historial</div>
+          <div>
+            <label style={{display:'inline',marginRight:8}}>Ver socio:</label>
+            <select value={filtro} onChange={e=>setFiltro(e.target.value)}>
+              <option value="">Todos los socios</option>
+              {db.socios.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}
+            </select>
+          </div>
+        </div>
+        {filtro&&<div style={{color:'var(--muted)',fontSize:13,marginBottom:10}}>
+          {hist.length} pago(s) · Total {fmt(hist.reduce((a,p)=>a+p.monto,0))}
+        </div>}
+        {hist.length===0?<div className="empty">Sin pagos.</div>:
+        <table><thead><tr><th>Fecha</th><th>Hora</th><th>Socio</th><th>Tipo</th><th>Concepto</th><th>Método</th><th>Monto</th></tr></thead><tbody>
+          {hist.map(p=><tr key={p.id}><td>{fd(p.fecha)}</td><td>{horaDe(p)}</td><td>{nombre(p.socioId)}</td><td>{p.tipo||'Membresía'}</td><td>{p.concepto||'—'}</td><td>{p.metodo}</td><td>{fmt(p.monto)}</td></tr>)}
+        </tbody></table>}
+      </div>
+    </div>
+  );
+}
+
+function Checkin({db,up}){
+  const [doc,setDoc]=useState('');
+  const [msg,setMsg]=useState(null);
+  const t=today();
+  const registrar=()=>{
+    const s=db.socios.find(x=>x.doc===doc.trim()||x.nombre.toLowerCase()===doc.trim().toLowerCase());
+    if(!s){setMsg({ok:false,txt:'Socio no encontrado: '+doc});return}
+    const e=estadoSocio(s,db);
+    if(e.k==='vencido'){setMsg({ok:false,txt:`⛔ ${s.nombre} — membresía VENCIDA (${fd(venceEfectivo(s,db))}). Acceso denegado.`});return}
+    up(d=>({asistencias:[...d.asistencias,{id:uid(),socioId:s.id,fecha:new Date().toISOString()}]}));
+    setMsg({ok:true,txt:`✅ ${s.nombre} — acceso permitido (${e.label}).`});
+    setDoc('');
+  };
+  const nombre=id=>db.socios.find(s=>s.id===id)?.nombre||'—';
+  const hoy=db.asistencias.filter(a=>a.fecha.slice(0,10)===t).sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  return(
+    <div>
+      <h1>Check-in / Asistencia</h1>
+      <div className="sub">Registro de entradas. Bloquea membresías vencidas.</div>
+      <div className="panel">
+        <div className="sec-title">Registrar entrada</div>
+        <div className="row">
+          <div><label>Documento o nombre del socio</label>
+            <input value={doc} onChange={e=>setDoc(e.target.value)} onKeyDown={e=>e.key==='Enter'&&registrar()} placeholder="DNI..." style={{width:240}} autoFocus/></div>
+          <button className="btn" onClick={registrar}>Registrar entrada</button>
+        </div>
+        {msg&&<div className={'checkmsg '+(msg.ok?'ok':'bad')}>{msg.txt}</div>}
+      </div>
+      <div className="panel">
+        <div className="sec-title">Entradas de hoy ({hoy.length})</div>
+        {hoy.length===0?<div className="empty">Aún sin registros hoy.</div>:
+        <table><thead><tr><th>Hora</th><th>Socio</th></tr></thead><tbody>
+          {hoy.map(a=><tr key={a.id}><td>{new Date(a.fecha).toLocaleTimeString('es-PE')}</td><td>{nombre(a.socioId)}</td></tr>)}
+        </tbody></table>}
+      </div>
+    </div>
+  );
+}
+
+function Clases({db,up}){
+  const empty={nombre:'',instructor:'',dia:'Lunes',hora:'18:00',cupo:15};
+  const [f,setF]=useState(empty);
+  const set=(k,v)=>setF({...f,[k]:v});
+  const crear=()=>{
+    if(!f.nombre.trim())return alert('Nombre de la clase requerido');
+    up(d=>({clases:[...d.clases,{id:uid(),...f,cupo:Number(f.cupo),inscritos:[]}]}));
+    setF(empty);
+  };
+  const borrar=id=>up(d=>({clases:d.clases.filter(c=>c.id!==id)}));
+  const toggle=(cid,sid)=>up(d=>({clases:d.clases.map(c=>{
+    if(c.id!==cid)return c;
+    const yes=c.inscritos.includes(sid);
+    if(!yes&&c.inscritos.length>=c.cupo){alert('Cupo completo');return c}
+    return{...c,inscritos:yes?c.inscritos.filter(x=>x!==sid):[...c.inscritos,sid]};
+  })}));
+  const [selSocio,setSelSocio]=useState(db.socios[0]?.id||'');
+  const orden=c=>DAYS.indexOf(c.dia)*10000+Number(c.hora.replace(':',''));
+  const clases=[...db.clases].sort((a,b)=>orden(a)-orden(b));
+  return(
+    <div>
+      <h1>Clases y horarios</h1>
+      <div className="sub">Agenda de clases, cupos e inscripción de socios.</div>
+      <div className="panel">
+        <div className="sec-title">Nueva clase</div>
+        <div className="row">
+          <div><label>Nombre</label><input value={f.nombre} onChange={e=>set('nombre',e.target.value)} placeholder="Spinning..."/></div>
+          <div><label>Instructor</label><input value={f.instructor} onChange={e=>set('instructor',e.target.value)}/></div>
+          <div><label>Día</label><select value={f.dia} onChange={e=>set('dia',e.target.value)}>{DAYS.map(d=><option key={d}>{d}</option>)}</select></div>
+          <div><label>Hora</label><input type="time" value={f.hora} onChange={e=>set('hora',e.target.value)}/></div>
+          <div><label>Cupo</label><input type="number" value={f.cupo} onChange={e=>set('cupo',e.target.value)} style={{width:80}}/></div>
+          <button className="btn g" onClick={crear}>+ Crear</button>
+        </div>
+      </div>
+      <div className="panel">
+        <div className="row" style={{marginBottom:14}}>
+          <div><label>Inscribir socio en clases</label><select value={selSocio} onChange={e=>setSelSocio(e.target.value)} style={{minWidth:200}}>
+            {db.socios.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}
+          </select></div>
+        </div>
+        {clases.length===0?<div className="empty">Sin clases.</div>:
+        <table><thead><tr><th>Clase</th><th>Instructor</th><th>Día / Hora</th><th>Cupo</th><th>Inscripción</th><th></th></tr></thead><tbody>
+          {clases.map(c=>{const ins=c.inscritos.includes(selSocio);return(
+            <tr key={c.id}>
+              <td>{c.nombre}</td>
+              <td>{c.instructor||'—'}</td>
+              <td>{c.dia} {c.hora}</td>
+              <td>{c.inscritos.length}/{c.cupo}</td>
+              <td><button className="link" onClick={()=>toggle(c.id,selSocio)}>{ins?'✓ Inscripto (quitar)':'+ Inscribir'}</button></td>
+              <td><button className="link d" onClick={()=>borrar(c.id)}>Eliminar</button></td>
+            </tr>);})}
+        </tbody></table>}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
